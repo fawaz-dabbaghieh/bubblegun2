@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include "graph/packed_graph.h"
+#include "util/Timer.h"
 #include "util/logger.h"
 
 namespace bubblegun::bchains {
@@ -62,6 +63,13 @@ std::uint64_t bubble_key(std::uint32_t left, std::uint32_t right) {
     const std::uint32_t high = std::max(left, right);
     const std::uint32_t low = std::min(left, right);
     return (static_cast<std::uint64_t>(high) << 32U) | static_cast<std::uint64_t>(low);
+}
+
+void log_progress(util::Logger* logger, const std::string& message) {
+    std::cout << '[' << util::get_time() << "] " << message << '\n';
+    if (logger != nullptr) {
+        logger->info(message);
+    }
 }
 
 std::size_t current_rss_kb() {
@@ -511,8 +519,9 @@ std::vector<BubbleChain> build_chains(const std::vector<Bubble>& bubbles,
     }
 
     if (logger != nullptr) {
-        logger->info(std::string("Got the ") + std::to_string(starting_nodes.size()) +
-                     " starting nodes of bubbles to construct chains...");
+        log_progress(logger,
+                     std::string("Identified ") + std::to_string(starting_nodes.size()) +
+                         " chain start nodes.");
     }
 
     std::vector<bool> bubble_available(bubbles.size(), true);
@@ -790,27 +799,40 @@ std::string bubble_type_name(BubbleType type) {
 }
 
 Result run(PackedGraph& graph, const Options& options, util::Logger* logger) {
+    util::Timer total_timer;
     Result result;
+
+    util::Timer detect_timer;
+    log_progress(logger, "Finding bubbles...");
     result.bubbles = detect_bubbles(graph, options);
+    log_progress(logger,
+                 std::string("Found ") + std::to_string(result.bubbles.size()) +
+                     " bubbles in " + util::format_elapsed(detect_timer.elapsed()) + '.');
 
-    if (logger != nullptr) {
-        logger->info(std::string("Found ") + std::to_string(result.bubbles.size()) + " Bubbles in the graph...");
-        logger->info("Connecting bubbles...");
-    }
-
+    util::Timer chain_timer;
+    log_progress(logger, "Connecting bubbles into chains...");
     result.chains = build_chains(result.bubbles, static_cast<std::uint32_t>(graph.node_count()), logger);
+    log_progress(logger,
+                 std::string("Connected bubbles into ") + std::to_string(result.chains.size()) +
+                     " chains in " + util::format_elapsed(chain_timer.elapsed()) + '.');
 
-    if (logger != nullptr) {
-        logger->info("Finding nested information...");
-    }
-
+    util::Timer relation_timer;
+    log_progress(logger, "Assigning chain ids and nested parent information...");
     assign_ids(result.bubbles, result.chains);
     assign_parents(result.bubbles, result.chains);
-    result.stats = compute_stats(graph, result);
+    log_progress(logger,
+                 std::string("Assigned chain ids and nested parent information in ") +
+                     util::format_elapsed(relation_timer.elapsed()) + '.');
 
-    if (logger != nullptr) {
-        logger->info("Done finding chains...");
-    }
+    util::Timer stats_timer;
+    log_progress(logger, "Computing chain statistics...");
+    result.stats = compute_stats(graph, result);
+    log_progress(logger,
+                 std::string("Computed chain statistics in ") +
+                     util::format_elapsed(stats_timer.elapsed()) + '.');
+    log_progress(logger,
+                 std::string("Done finding chains in ") +
+                     util::format_elapsed(total_timer.elapsed()) + '.');
 
     return result;
 }

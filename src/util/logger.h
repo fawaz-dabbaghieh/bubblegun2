@@ -1,12 +1,11 @@
 #ifndef BUBBLEGUN_CPP_UTIL_LOGGER_H
 #define BUBBLEGUN_CPP_UTIL_LOGGER_H
 
-#include <chrono>
 #include <fstream>
-#include <iomanip>
-#include <sstream>
 #include <string>
 #include <string_view>
+
+#include "Timer.h"
 
 namespace bubblegun::util {
 
@@ -37,28 +36,7 @@ public:
 
 private:
     static std::string timestamp(std::string_view message) {
-        using namespace std::chrono;
-        const auto now = system_clock::now();
-        const auto seconds = system_clock::to_time_t(now);
-        const auto millis = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
-
-        std::tm local_tm{};
-#if defined(_WIN32)
-        localtime_s(&local_tm, &seconds);
-#else
-        localtime_r(&seconds, &local_tm);
-#endif
-
-        std::ostringstream out;
-        out << '['
-            << std::put_time(&local_tm, "%Y-%m-%d %H:%M:%S")
-            << ','
-            << std::setw(3)
-            << std::setfill('0')
-            << millis.count()
-            << "] "
-            << message;
-        return out.str();
+        return '[' + get_time() + "] " + std::string(message);
     }
 
     void write(std::string_view message) {

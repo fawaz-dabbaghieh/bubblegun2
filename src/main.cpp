@@ -8,6 +8,7 @@
 
 #include "bchains/bchains.h"
 #include "graph/packed_graph.h"
+#include "util/Timer.h"
 #include "util/logger.h"
 
 namespace {
@@ -21,6 +22,13 @@ std::string join_argv(int argc, char** argv) {
         out << argv[i];
     }
     return out.str();
+}
+
+void log_progress(bubblegun::util::Logger* logger, const std::string& message) {
+    std::cout << '[' << bubblegun::util::get_time() << "] " << message << '\n';
+    if (logger != nullptr) {
+        logger->info(message);
+    }
 }
 
 }  // namespace
@@ -121,21 +129,34 @@ int main(int argc, char** argv) {
 
     bubblegun::util::Logger logger(program.get<std::string>("--log_file"));
     logger.info(std::string("argument given: ") + join_argv(argc, argv));
+    bubblegun::util::Timer total_timer;
 
     try {
-        logger.info("Reading Graph...");
+        bubblegun::util::Timer graph_timer;
+        log_progress(&logger, std::string("Reading graph from ") + input_graph + "...");
         bubblegun::graph::PackedGraph::LoadOptions load_options;
         load_options.store_sequences = !chains_gfa.empty();
         load_options.store_optional_fields = !chains_gfa.empty();
 
         bubblegun::graph::PackedGraph graph =
             bubblegun::graph::PackedGraph::load_from_gfa(input_graph, load_options);
+        log_progress(&logger,
+                     std::string("Finished reading graph in ") +
+                         bubblegun::util::format_elapsed(graph_timer.elapsed()) +
+                         " (" + std::to_string(graph.node_count()) + " nodes, " +
+                         std::to_string(graph.edge_count()) + " edges).");
 
-        logger.info("Finding bubbles...");
+        bubblegun::util::Timer analysis_timer;
+        log_progress(&logger, "Starting bubble detection and chain construction...");
         bubblegun::bchains::Options options;
         options.only_simple = only_simple;
         options.only_super = only_super;
         bubblegun::bchains::Result result = bubblegun::bchains::run(graph, options, &logger);
+        log_progress(&logger,
+                     std::string("Finished bubble detection and chain construction in ") +
+                         bubblegun::util::format_elapsed(analysis_timer.elapsed()) +
+                         " (" + std::to_string(result.bubbles.size()) + " bubbles, " +
+                         std::to_string(result.chains.size()) + " chains).");
 
         std::cout << "The number of Simple Bubbles is " << result.stats.simple_bubbles << '\n'
                   << "The number of Superbubbles is " << result.stats.superbubbles << '\n'
@@ -151,14 +172,26 @@ int main(int argc, char** argv) {
         }
 
         if (!json_path.empty()) {
-            logger.info("Outputting bubble chains json...");
+            bubblegun::util::Timer json_timer;
+            log_progress(&logger, std::string("Writing bubble-chain JSON to ") + json_path + "...");
             bubblegun::bchains::write_json(graph, result, json_path);
+            log_progress(&logger,
+                         std::string("Finished writing bubble-chain JSON in ") +
+                             bubblegun::util::format_elapsed(json_timer.elapsed()) + '.');
         }
 
         if (!chains_gfa.empty()) {
-            logger.info("Outputting bubble chains gfa...");
+            bubblegun::util::Timer gfa_timer;
+            log_progress(&logger, std::string("Writing bubble-chain GFA to ") + chains_gfa + "...");
             bubblegun::bchains::write_chain_gfa(graph, result, chains_gfa);
+            log_progress(&logger,
+                         std::string("Finished writing bubble-chain GFA in ") +
+                             bubblegun::util::format_elapsed(gfa_timer.elapsed()) + '.');
         }
+
+        log_progress(&logger,
+                     std::string("Run completed in ") +
+                         bubblegun::util::format_elapsed(total_timer.elapsed()) + '.');
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         logger.error(error.what());

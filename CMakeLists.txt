@@ -9,14 +9,17 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-set(DEFAULT_ARGPARSE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../gfaidx/external/argparse/include")
-set(ARGPARSE_INCLUDE_DIR "${DEFAULT_ARGPARSE_INCLUDE_DIR}" CACHE PATH "Path to the argparse include directory")
+set(ARGPARSE_SUBMODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/argparse")
 
-if(NOT EXISTS "${ARGPARSE_INCLUDE_DIR}/argparse/argparse.hpp")
-    message(FATAL_ERROR "Could not find argparse.hpp. Set ARGPARSE_INCLUDE_DIR to the directory that contains argparse/argparse.hpp")
+if(NOT EXISTS "${ARGPARSE_SUBMODULE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR
+        "Could not find vendored argparse at ${ARGPARSE_SUBMODULE_DIR}. "
+        "Initialize submodules with: git submodule update --init --recursive"
+    )
 endif()
 
 find_package(ZLIB REQUIRED)
+add_subdirectory(external/argparse)
 
 add_executable(bubblegun_cpp
     src/main.cpp
@@ -29,7 +32,6 @@ add_executable(bubblegun_cpp
 target_include_directories(bubblegun_cpp
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${ARGPARSE_INCLUDE_DIR}
 )
 
 target_compile_options(bubblegun_cpp
@@ -42,5 +44,6 @@ target_compile_options(bubblegun_cpp
 
 target_link_libraries(bubblegun_cpp
     PRIVATE
+        argparse::argparse
         ZLIB::ZLIB
 )

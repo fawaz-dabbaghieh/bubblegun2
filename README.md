@@ -16,18 +16,13 @@
 
 ## Build
 
-The project uses the same `argparse` header library that exists in the sibling `gfaidx` repository.
+The project vendors `argparse` as a git submodule under `external/argparse`.
 
 ```bash
-cd /workspace/fawaz/bubblegun_cpp/bubblegun_cpp
+git submodule update --init --recursive
+cd /workspace/fawaz/bubblegun_cpp/bubblegun2
 cmake -S . -B build
 cmake --build build -j
-```
-
-If `argparse.hpp` is not in the default sibling path, point CMake at it explicitly:
-
-```bash
-cmake -S . -B build -DARGPARSE_INCLUDE_DIR=/path/to/argparse/include
 ```
 
 ## Usage
