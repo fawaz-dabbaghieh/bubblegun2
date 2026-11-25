@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "bubbles/bubbles.h"
+
 namespace bubblegun::graph {
 class PackedGraph;
 }
@@ -16,21 +18,15 @@ class Logger;
 
 namespace bubblegun::bchains {
 
-enum class BubbleType {
-    Simple,
-    Super,
-    Insertion,
-};
+using bubbles::BubbleType;
+using bubbles::bubble_type_name;
 
-struct Bubble {
-    std::uint32_t source = 0;
-    std::uint32_t sink = 0;
-    std::vector<std::uint32_t> inside;
+// A found bubble plus the chain-numbered ids used in the JSON output.
+struct Bubble : bubbles::Bubble {
     std::size_t id = 0;
     std::size_t parent_chain = 0;
     std::size_t parent_sb = 0;
     std::size_t chain_id = 0;
-    BubbleType type = BubbleType::Super;
 };
 
 struct BubbleChain {
@@ -66,7 +62,6 @@ struct Result {
 Result run(graph::PackedGraph& graph, const Options& options, util::Logger* logger = nullptr);
 void write_json(const graph::PackedGraph& graph, const Result& result, const std::string& output_path);
 void write_chain_gfa(const graph::PackedGraph& graph, const Result& result, const std::string& output_path);
-std::string bubble_type_name(BubbleType type);
 
 }  // namespace bubblegun::bchains
 

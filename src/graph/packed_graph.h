@@ -31,7 +31,24 @@ public:
         std::uint32_t side_processed = 0;
     };
 
+    // One edge as in a GFA L line; "reverse" is the node's '-' orientation.
+    struct Edge {
+        node_index_t from = 0;
+        bool from_reverse = false;
+        node_index_t to = 0;
+        bool to_reverse = false;
+        std::uint32_t overlap = 0;
+    };
+
+#ifdef BUBBLEGUN_WITH_GFA_READER
     static PackedGraph load_from_gfa(const std::string& gfa_path, const LoadOptions& options);
+#endif
+
+    // Builds the graph from memory instead of a GFA file, with nodes indexed
+    // by their position in node_ids.
+    static PackedGraph from_edges(std::vector<std::string> node_ids,
+                                  std::vector<std::uint32_t> node_lengths,
+                                  const std::vector<Edge>& edges);
 
     [[nodiscard]] std::size_t node_count() const {
         return node_ids_.size();
@@ -165,10 +182,14 @@ public:
     }
 
 private:
+#ifdef BUBBLEGUN_WITH_GFA_READER
     void load_segments(const std::string& gfa_path, const LoadOptions& options);
     void count_links(const std::string& gfa_path, const LoadOptions& options, std::vector<std::uint32_t>& side_counts);
     void fill_links(const std::string& gfa_path, const LoadOptions& options);
     side_t parse_link_side(std::string_view node_id, char orientation, bool is_source) const;
+#endif
+    void allocate_links(const std::vector<std::uint32_t>& side_counts);
+    void allocate_search_marks();
 
     std::unordered_map<std::string, node_index_t> id_to_index_;
     std::vector<std::string> node_ids_;

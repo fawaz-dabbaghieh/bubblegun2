@@ -14,6 +14,32 @@
 - The public graph API is handle-style and exposes oriented node handles through `get_handle`, `flip`, and `follow_edges`.
 - Bubble detection uses the same packed superbubble search strategy as the Python implementation, then chains bubbles by shared endpoints and annotates nested superbubbles for JSON compatibility.
 
+## Library
+
+Bubble detection is also a static library, `bubblegun`, usable without the CLI. `find_bubbles` finds every bubble independently (no chaining) and gives each one its `parent`: the index of the smallest superbubble containing it, or `no_parent` at the top level. Following parents gives the full nesting stack, innermost first.
+
+```cpp
+#include "bubblegun.h"
+
+using bubblegun::graph::PackedGraph;
+
+// From a GFA file, or from memory with nodes indexed by position:
+PackedGraph graph = PackedGraph::from_edges(
+    {"1", "2", "3", "4"}, {10, 1, 1, 10},
+    {{0, false, 1, false}, {0, false, 2, false}, {1, false, 3, false}, {2, false, 3, false}});
+
+for (const auto& bubble : bubblegun::bubbles::find_bubbles(graph)) {
+    // bubble.type, bubble.source, bubble.sink, bubble.inside, bubble.parent
+}
+```
+
+`bubblegun::bchains::run` groups the same bubbles into chains, as the `bchains` subcommand does.
+
+CMake options:
+
+- `BUBBLEGUN_BUILD_CLI` (default `ON`): build `bubblegun_cpp`.
+- `BUBBLEGUN_WITH_GFA_READER` (default `ON`): `PackedGraph::load_from_gfa`, which needs zlib. With it off the library has no dependencies and only `from_edges` loads graphs, e.g. for WebAssembly.
+
 ## Build
 
 The project vendors `argparse` as a git submodule under `external/argparse`.
